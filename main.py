@@ -3,6 +3,7 @@ import customtkinter as ctk
 import yt_dlp
 import certifi
 import os
+import re
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 ctk.set_appearance_mode("dark")
@@ -17,12 +18,23 @@ title = ctk.CTkLabel(app, text="Insert video link", font=("Arial", 20))
 link = ctk.CTkEntry(app, width=350, height=40, textvariable=url_bar)
 link.pack()
 
+def remove_ansi_escape_codes(s):
+  ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+  return ansi_escape.sub('', s)
+
 def on_progress(d):
   if d['status'] == 'downloading':
-    p = d['_percent_str']
+    p = remove_ansi_escape_codes(d['_percent_str'])
     pPercentage.configure(text=p)
     pPercentage.update()
-    progressBar.set(float(d['_percent_str'].replace('%',''))/100)
+    
+    # Extracting and formatting the ETA
+    eta_seconds = d.get('eta', 0)
+    eta_minutes, eta_seconds = divmod(eta_seconds, 60)
+    eta_str = f"{int(eta_minutes):02d}:{int(eta_seconds):02d}"
+    etaLabel.configure(text=f"ETA: {eta_str}")
+    
+    progressBar.set(float(p.replace('%', ''))/100)
 
 def startDownload():
   try:
@@ -44,6 +56,9 @@ download.pack(padx=10, pady=10)
 
 finished = ctk.CTkLabel(app, text="")
 finished.pack()
+
+etaLabel = ctk.CTkLabel(app, text="ETA: 00:00")
+etaLabel.pack()
 
 # progress bar
 pPercentage = ctk.CTkLabel(app, text="0%")
